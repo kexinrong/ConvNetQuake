@@ -1,10 +1,14 @@
 import abc
 import os
 import time
+from IPython import embed
 
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.client import timeline
+
+tf_config = tf.ConfigProto()
+tf_config.gpu_options.allow_growth = True
 
 class BaseModel(object):
   """Base model implementing the training loop and general model interface."""
@@ -135,7 +139,7 @@ class BaseModel(object):
       self.is_correct = tf.to_float(is_correct)
       self.accuracy = tf.reduce_mean(self.is_correct)
 
-    with tf.Session() as sess:
+    with tf.Session(config=tf_config) as sess:
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
@@ -185,7 +189,7 @@ class BaseModel(object):
     # Summaries
     self.merged_summaries = tf.merge_summary(self.summaries)
 
-    with tf.Session() as sess:
+    with tf.Session(config=tf_config) as sess:
       self.summary_writer = tf.train.SummaryWriter(self.checkpoint_dir, sess.graph)
 
       print 'Initializing all variables.'
@@ -197,6 +201,7 @@ class BaseModel(object):
       print 'Starting data threads coordinator.'
       coord = tf.train.Coordinator()
       threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+      # embed()
 
       print 'Starting optimization.'
       start_time = time.time()

@@ -8,6 +8,7 @@ from tqdm import tqdm
 import csv
 import json
 from obspy.core.utcdatetime import UTCDateTime
+from IPython import embed
 
 POSITIVE_EXAMPLES_PATH = 'positive'
 NEGATIVE_EXAMPLES_PATH = 'negative'
@@ -90,6 +91,13 @@ class DataReader(object):
         fname_q = tf.train.string_input_producer(fnames,
                                                  shuffle=self._shuffle,
                                                  num_epochs=self._config.n_epochs)
+        """
+        coord = tf.train.Coordinator()
+        sess = tf.InteractiveSession()
+        threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+        a = tf.TFRecordReader()
+        t = self._parse_example(a.read(fname_q)[1])
+        """
         return fname_q
 
     def _parse_example(self, serialized_example):
@@ -101,12 +109,14 @@ class DataReader(object):
                 'data': tf.FixedLenFeature([], tf.string),
                 'cluster_id': tf.FixedLenFeature([], tf.int64),
                 'start_time': tf.FixedLenFeature([],tf.int64),
-                'end_time': tf.FixedLenFeature([], tf.int64)})
+                'end_time': tf.FixedLenFeature([], tf.int64)
+            })
 
         # Convert and reshape
         data = tf.decode_raw(features['data'], tf.float32)
         data.set_shape([self.n_traces * self.win_size])
         data = tf.reshape(data, [self.n_traces, self.win_size])
+        # data = tf.Print(data, [data])
         data = tf.transpose(data, [1, 0])
 
         # Pack
@@ -133,6 +143,7 @@ class DataPipeline(object):
         if is_training:
 
             with tf.name_scope('inputs'):
+                print "is_training"
                 self._reader = DataReader(dataset_path, config=config)
                 samples = self._reader.read()
                 sample_input = samples['data']
@@ -143,7 +154,13 @@ class DataPipeline(object):
                     batch_size=config.batch_size,
                     capacity=capacity,
                     min_after_dequeue=min_after_dequeue,
-                    allow_smaller_final_batch=False)
+                    allow_smaller_final_batch=False
+                )
+                #self.samples, self.labels = tf.train.batch(
+                #    [sample_input, sample_target],
+                #    batch_size=config.batch_size,
+                #    capacity=capacity,
+                #    allow_smaller_final_batch=False)
 
         elif not is_training:
 
