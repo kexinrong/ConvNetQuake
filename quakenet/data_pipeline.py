@@ -143,7 +143,6 @@ class DataPipeline(object):
         if is_training:
 
             with tf.name_scope('inputs'):
-                print "is_training"
                 self._reader = DataReader(dataset_path, config=config)
                 samples = self._reader.read()
                 sample_input = samples['data']
@@ -156,11 +155,6 @@ class DataPipeline(object):
                     min_after_dequeue=min_after_dequeue,
                     allow_smaller_final_batch=False
                 )
-                #self.samples, self.labels = tf.train.batch(
-                #    [sample_input, sample_target],
-                #    batch_size=config.batch_size,
-                #    capacity=capacity,
-                #    allow_smaller_final_batch=False)
 
         elif not is_training:
 

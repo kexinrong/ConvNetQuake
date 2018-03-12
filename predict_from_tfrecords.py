@@ -30,6 +30,9 @@ import quakenet.models as models
 from quakenet.data_pipeline import DataPipeline
 import quakenet.config as config
 
+tf_config = tf.ConfigProto()
+tf_config.gpu_options.allow_growth = True
+
 def main(args):
     setproctitle.setproctitle('quakenet_eval')
 
@@ -84,7 +87,7 @@ def main(args):
 
 
     # Run ConvNetQuake
-    with tf.Session() as sess:
+    with tf.Session(config=tf_config) as sess:
         coord = tf.train.Coordinator()
         tf.initialize_local_variables().run()
         threads = tf.train.start_queue_runners(sess=sess, coord=coord)
