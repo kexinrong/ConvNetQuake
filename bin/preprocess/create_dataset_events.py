@@ -20,7 +20,7 @@ import numpy as np
 from quakenet.data_pipeline import DataWriter
 import tensorflow as tf
 from obspy.core import read
-from quakenet.data_io import load_catalog
+from quakenet.data_io import load_catalog_text
 from obspy.core.utcdatetime import UTCDateTime
 from openquake.hazardlib.geo.geodetic import distance
 import fnmatch
@@ -45,8 +45,12 @@ FLAGS = flags.FLAGS
 
 def distance_to_station(lat, long, depth):
     # station GPS coordinates
-    lat0 = 35.796570
-    long0 = -97.454860
+    # lat0 = 35.796570
+    # long0 = -97.454860
+    # depth0 = -0.333
+    # PG.DCD
+    lat0 = 35.2122
+    long0 = -120.8408
     depth0 = -0.333
     # return distance of the event to the station
     return distance(long, lat, depth, long0, lat0, depth0)
@@ -59,8 +63,10 @@ def preprocess_stream(stream):
 
 def filter_catalog(cat):
     # Filter around Guthrie sequence
-    cat = cat[(cat.latitude > 35.7) & (cat.latitude < 36)
-              & (cat.longitude > -97.6) & (cat.longitude < -97.2)]
+    # cat = cat[(cat.latitude > 35.7) & (cat.latitude < 36)
+    #           & (cat.longitude > -97.6) & (cat.longitude < -97.2)]
+    cat = cat[(cat.latitude > 34.9) & (cat.latitude < 35.5)
+          & (cat.longitude > -121.2) & (cat.longitude < -120.4)]
     return cat
 
 
@@ -96,7 +102,7 @@ def main(_):
 
     # Load Catalog
     print "+ Loading Catalog"
-    cat = load_catalog(FLAGS.catalog)
+    cat = load_catalog_text(FLAGS.catalog)
     cat = filter_catalog(cat)
 
     for stream_file in stream_files:

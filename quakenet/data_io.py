@@ -48,6 +48,39 @@ def load_catalog(path):
     return catalog
 
 
+def load_catalog_text(path):
+    """Loads a event catalog from a .csv file.
+
+    Each row in the catalog references a know seismic event.
+
+    Args:
+        path: path to the input .csv file.
+
+    Returns:
+        catalog: A Pandas dataframe.
+    """
+
+    catalog = pd.read_table(path, delimiter=',')
+    # Check if utc_timestamp exists, otherwise create it
+    if 'utc_timestamp' not in catalog.columns:
+        utc_timestamp = []
+        for e in catalog[catalog.columns[0]].values:
+            utc_timestamp.append(UTCDateTime(e).timestamp)
+        catalog['utc_timestamp'] = utc_timestamp
+    if 'latitude' not in catalog.columns:
+        for i in range(len(catalog.columns)):
+            if 'lat' in catalog.columns[i].lower():
+                catalog['latitude'] = catalog[catalog.columns[i]]
+            elif 'lon' in catalog.columns[i].lower():
+                catalog['longitude'] = catalog[catalog.columns[i]]
+    if 'depth' not in catalog.columns:
+        for i in range(len(catalog.columns)):
+            if 'depth' in catalog.columns[i].lower():
+                catalog['depth'] = catalog[catalog.columns[i]]
+    catalog['cluster_id'] = [0] * len(catalog.index)
+    return catalog
+
+
 def write_stream(stream, path):
     stream.write(path, format='MSEED')
 
