@@ -4,8 +4,8 @@ import datetime
 import sys
 
 INTERVAL = relativedelta(months=+1)
-dir = '/lfs/1/krong/ConvNetQuake/diablo/stream/'
-fname_format = 'PG.DCD..%s__%sT000000Z__%sT000000Z.mseed'
+dir = '/lfs/1/krong/ConvNetQuake/diablo/dpd_stream/'
+fname_format = 'PG.DPD..%s__%sT000000Z__%sT000000Z.mseed'
 channels = ['EHE', 'EHN', 'EHZ']
 
 def construct_filename(channel, t):
@@ -19,9 +19,12 @@ if __name__ == '__main__':
 	t = start_time
 	while t <= end_time:
 		print t
-		t1 = obspy.read(construct_filename(channels[0], t))
-		t2 = obspy.read(construct_filename(channels[1], t))
-		t3 = obspy.read(construct_filename(channels[2], t))
-		st = t1 + t2 + t3
-		st.write('%sPG.DCD.%s.mseed' % (dir, t.strftime('%Y%m')), format='MSEED')
+		try:
+			t1 = obspy.read(construct_filename(channels[0], t))
+			t2 = obspy.read(construct_filename(channels[1], t))
+			t3 = obspy.read(construct_filename(channels[2], t))
+			st = t1 + t2 + t3
+			st.write('%sPG.DPD.%s.mseed' % (dir, t.strftime('%Y%m')), format='MSEED')
+		except:
+			print "Skipping"
 		t += INTERVAL

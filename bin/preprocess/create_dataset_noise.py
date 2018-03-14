@@ -87,6 +87,7 @@ def main(_):
     print "First event in filtered catalog", cat.DateTime.values[0]
     print "Last event in filtered catalog", cat.DateTime.values[-1]
     cat_event_times = cat.utc_timestamp.values
+    cat_event_idx = 0
 
     # Write event waveforms and cluster_id=-1 in .tfrecords
     n_tfrecords = 0
@@ -100,24 +101,22 @@ def main(_):
                            step=FLAGS.window_step,
                            include_partial_windows=False)
     if FLAGS.max_windows is None:
-        total_time = stream[0].stats.endtime - stream[0].stats.starttime
+        total_time = stream[-1].stats.endtime - stream[0].stats.starttime
         max_windows = (total_time - FLAGS.window_size) / FLAGS.window_step
     else:
         max_windows = FLAGS.max_windows
 
     # Create adjacent windows in the stream. Check there is no event inside
     # using the catalog and then write in a tfrecords with label=-1
-
-
     n_tfrecords = 0
     for idx, win in enumerate(win_gen):
 
         # If there is not trace skip this waveform
         n_traces = len(win)
-        if n_traces == 0:
+        if n_traces != 3:
             continue
         # Check trace is complete
-        if len(win)==3:
+        if n_traces==3:
             n_samples = min(len(win[0].data),len(win[1].data))
             n_samples = min(n_samples, len(win[2].data))
         else:
@@ -126,35 +125,45 @@ def main(_):
         # Check if there is an event in the window
         window_start = win[0].stats.starttime.timestamp
         window_end = win[-1].stats.endtime.timestamp
-        after_start = cat_event_times > window_start
-        before_end = cat_event_times < window_end
-        try:
-            cat_idx = np.where(after_start == before_end)[0][0]
-            event_time = cat_event_times[cat_idx]
-            is_event = True
-            assert window_start < cat.utc_timestamp.values[cat_idx]
-            assert window_end > cat.utc_timestamp.values[cat_idx]
-            print "avoiding event {}".format(cat.DateTime.values[cat_idx])
-        except IndexError:
-            # there is no event
-            is_event = False
-            if (len(win)==3) and (n_pts == n_samples):
-                # Write tfrecords
-                writer.write(win,-1)
-                # Plot events
-                if FLAGS.plot:
-                    trace = win[0]
-                    viz_dir = os.path.join(
-                        FLAGS.output_dir, "viz", stream_file.split(".mseed")[0])
-                    if not os.path.exists(viz_dir):
-                        os.makedirs(viz_dir)
-                    trace.plot(outfile=os.path.join(viz_dir,
-                                                    "noise_{}.png".format(idx)))
+        if cat_event_idx < len(cat_event_times) and \
+            cat_event_times[cat_event_idx] > window_start and \
+            cat_event_times[cat_event_idx] < window_end:
+            event_time = cat_event_times[cat_event_idx]
+            assert window_start < cat.utc_timestamp.values[cat_event_idx]
+            assert window_end > cat.utc_timestamp.values[cat_event_idx]
+            print "avoiding event {}".format(cat.DateTime.values[cat_event_idx])
+            continue
+        elif cat_event_idx < len(cat_event_times) and \
+            window_start > cat_event_times[cat_event_idx] and \
+            window_start < cat_event_times[cat_event_idx] + 600:
+            # Avoiding 10 mins after the event time
+            continue
+        elif cat_event_idx < len(cat_event_times) and \
+            window_start > cat_event_times[cat_event_idx] + 600:
+            print "avoided event {} until {}".format(
+                cat.DateTime.values[cat_event_idx],
+                window_start)
+            cat_event_idx += 1
+        # there is no event
+        if (n_pts == n_samples):
+        #if (len(win)==3):
+            # Write tfrecords
+            writer.write(win,-1)
+            # Plot events
+            if FLAGS.plot:
+                trace = win[0]
+                viz_dir = os.path.join(
+                    FLAGS.output_dir, "viz", stream_file.split(".mseed")[0])
+                if not os.path.exists(viz_dir):
+                    os.makedirs(viz_dir)
+                trace.plot(outfile=os.path.join(viz_dir,
+                                                "noise_{}.png".format(idx)))
+
         if idx % 1000  ==0 and idx != 0:
             print "{} windows created".format(idx)
             # Save num windows created in metadata
             metadata[output_name] = writer._written
-            print "creating a new tfrecords"
+            print "creating a new tfrecords {}".format(writer._written)
             n_tfrecords +=1
             output_name = "noise_" + stream_file.split(".mseed")[0] + \
                           "_" + str(n_tfrecords) + ".tfrecords"

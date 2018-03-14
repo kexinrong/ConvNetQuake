@@ -48,9 +48,13 @@ def distance_to_station(lat, long, depth):
     # lat0 = 35.796570
     # long0 = -97.454860
     # depth0 = -0.333
-    # PG.DCD
-    lat0 = 35.2122
-    long0 = -120.8408
+    # # PG.DCD
+    # lat0 = 35.2122
+    # long0 = -120.8408
+    # depth0 = -0.333
+    # PG.DPD
+    lat0 = 35.2330
+    long0 = -120.7817
     depth0 = -0.333
     # return distance of the event to the station
     return distance(long, lat, depth, long0, lat0, depth0)
