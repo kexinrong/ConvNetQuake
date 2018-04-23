@@ -47,6 +47,7 @@ def main(args):
     cfg.add = 1
     cfg.n_clusters += 1
     cfg.n_epochs = 1
+    cfg.win_size = 1501
 
     # Remove previous output directory
     if os.path.exists(args.output):

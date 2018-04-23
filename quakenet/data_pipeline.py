@@ -28,14 +28,15 @@ class DataWriter(object):
 
     def write(self, sample_window, cluster_id):
         n_traces = len(sample_window)
-        n_samples = len(sample_window[0].data)
+        #n_samples = len(sample_window[0].data)
+        n_samples = 1501
         # Extract data
         data = np.zeros((n_traces, n_samples), dtype=np.float32)
         for i in range(n_traces):
-            data[i, :] = sample_window[i].data[:n_samples]
+            data[i, :] = sample_window[i].data[-n_samples:]
         # Extract metadata
-        start_time = np.int64(sample_window[0].stats.starttime.timestamp)
-        end_time = np.int64(sample_window[0].stats.endtime.timestamp)
+        start_time = np.int64(sample_window[1].stats.starttime.timestamp)
+        end_time = np.int64(sample_window[1].stats.endtime.timestamp)
         # print('starttime {}, endtime {}'.format(UTCDateTime(start_time),
                                                 # UTCDateTime(end_time)))
 
