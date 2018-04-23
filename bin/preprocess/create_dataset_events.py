@@ -20,11 +20,12 @@ import numpy as np
 from quakenet.data_pipeline import DataWriter
 import tensorflow as tf
 from obspy.core import read
-from quakenet.data_io import load_catalog_text
+from quakenet.data_io import load_catalog_plain
 from obspy.core.utcdatetime import UTCDateTime
 from openquake.hazardlib.geo.geodetic import distance
 import fnmatch
 import json
+import random
 
 flags = tf.flags
 flags.DEFINE_string('stream_dir', None,
@@ -106,8 +107,10 @@ def main(_):
 
     # Load Catalog
     print "+ Loading Catalog"
-    cat = load_catalog_text(FLAGS.catalog)
-    cat = filter_catalog(cat)
+    cat = load_catalog_plain(FLAGS.catalog)
+    #cat = filter_catalog(cat)
+
+    seg_len = FLAGS.window_size / 5
 
     for stream_file in stream_files:
 
@@ -128,7 +131,7 @@ def main(_):
              & (cat.utc_timestamp < end_date))]
 
         # Propagation time from source to station
-        travel_time = get_travel_time(filtered_catalog)
+        #travel_time = get_travel_time(filtered_catalog)
 
         # Write event waveforms and cluster_id in .tfrecords
         output_name = stream_file.split(".mseed")[0] + ".tfrecords"
@@ -138,41 +141,45 @@ def main(_):
         # Loop over all events in the considered stream
         for event_n in range(filtered_catalog.shape[0]):
             event_time = filtered_catalog.utc_timestamp.values[event_n]
-            event_time += travel_time[event_n]
-            st_event = stream.slice(UTCDateTime(event_time),
-                                    UTCDateTime(event_time) + FLAGS.window_size).copy()
-            cluster_id = filtered_catalog.cluster_id.values[event_n]
-            n_traces = len(st_event)
-            # If there is not trace skip this waveform
-            if n_traces == 0:
-                continue
-            n_samples = len(st_event[0].data)
-            n_pts = st_event[0].stats.sampling_rate * FLAGS.window_size + 1
-            if (len(st_event) == 3) and (n_pts == n_samples):
-                # Write tfrecords
-                writer.write(st_event, cluster_id)
-                # Save window and cluster_id
-                if FLAGS.save_mseed:
-                    output_label = "label_{}_lat_{:.3f}_lon_{:.3f}.mseed".format(
-                                    cluster_id,
-                                    filtered_catalog.latitude.values[event_n],
-                                    filtered_catalog.longitude.values[event_n])
-                    output_mseed_dir = os.path.join(FLAGS.output_dir,"mseed")
-                    if not os.path.exists(output_mseed_dir):
-                        os.makedirs(output_mseed_dir)
-                    output_mseed = os.path.join(output_mseed_dir,output_label)
-                    st_event.write(output_mseed,format="MSEED")
-                # Plot events
-                if FLAGS.plot:
-                    trace = st_event[0]
-                    viz_dir = os.path.join(
-                        FLAGS.output_dir, "viz", stream_file.split(".mseed")[0])
-                    if not os.path.exists(viz_dir):
-                        os.makedirs(viz_dir)
-                    trace.plot(outfile=os.path.join(viz_dir,
-                                                    "event_{}.png".format(event_n)))
-            else:
-                print "Missing waveform for event:", UTCDateTime(event_time)
+            for i in range(5):
+                # Add random shift to avoid event always being in the middle
+                random_shift = seg_len * i + random.randint(0, seg_len)
+                new_event_time = event_time - random_shift
+                #event_time += travel_time[event_n]
+                st_event = stream.slice(UTCDateTime(new_event_time),
+                                        UTCDateTime(new_event_time) + FLAGS.window_size).copy()
+                cluster_id = filtered_catalog.cluster_id.values[event_n]
+                n_traces = len(st_event)
+                # If there is not trace skip this waveform
+                if n_traces == 0:
+                    continue
+                n_samples = len(st_event[0].data)
+                n_pts = st_event[0].stats.sampling_rate * FLAGS.window_size + 1
+                if (len(st_event) == 3) and (n_pts == n_samples):
+                    # Write tfrecords
+                    writer.write(st_event, cluster_id)
+                    # Save window and cluster_id
+                    if FLAGS.save_mseed:
+                        output_label = "label_{}_lat_{:.3f}_lon_{:.3f}.mseed".format(
+                                        cluster_id,
+                                        filtered_catalog.latitude.values[event_n],
+                                        filtered_catalog.longitude.values[event_n])
+                        output_mseed_dir = os.path.join(FLAGS.output_dir,"mseed")
+                        if not os.path.exists(output_mseed_dir):
+                            os.makedirs(output_mseed_dir)
+                        output_mseed = os.path.join(output_mseed_dir,output_label)
+                        st_event.write(output_mseed,format="MSEED")
+                    # Plot events
+                    if FLAGS.plot:
+                        trace = st_event[0]
+                        viz_dir = os.path.join(
+                            FLAGS.output_dir, "viz", stream_file.split(".mseed")[0])
+                        if not os.path.exists(viz_dir):
+                            os.makedirs(viz_dir)
+                        trace.plot(outfile=os.path.join(viz_dir,
+                                                        "event_{}.png".format(event_n)))
+                else:
+                    print "Missing waveform for event:", UTCDateTime(event_time)
 
         # Cleanup writer
         print("Number of events written={}".format(writer._written))

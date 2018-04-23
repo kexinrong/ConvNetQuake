@@ -80,6 +80,27 @@ def load_catalog_text(path):
     catalog['cluster_id'] = [0] * len(catalog.index)
     return catalog
 
+def load_catalog_plain(path):
+    """Loads a event catalog from a .txt file of timestamps.
+
+    Each row in the catalog references a know seismic event.
+
+    Args:
+        path: path to the input txt file.
+
+    Returns:
+        catalog: A Pandas dataframe.
+    """
+
+    f = open(path, 'r')
+    utc_timestamp = []
+    for line in f.readlines():
+        utc_timestamp.append(UTCDateTime(line.strip()).timestamp)
+    f.close()
+    catalog = pd.DataFrame(utc_timestamp, columns=['utc_timestamp'])
+    catalog['cluster_id'] = [0] * len(catalog.index)
+    return catalog
+
 
 def write_stream(stream, path):
     stream.write(path, format='MSEED')

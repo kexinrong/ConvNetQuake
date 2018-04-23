@@ -37,6 +37,7 @@ def main(args):
   cfg.add = 1
   cfg.n_clusters = args.n_clusters
   cfg.n_clusters += 1
+  cfg.win_size = 1501
 
   pos_path = os.path.join(args.dataset,"positive")
   neg_path = os.path.join(args.dataset,"negative")

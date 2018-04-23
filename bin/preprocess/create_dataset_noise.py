@@ -20,7 +20,7 @@ import numpy as np
 from quakenet.data_pipeline import DataWriter
 import tensorflow as tf
 from obspy.core import read
-from quakenet.data_io import load_catalog_text
+from quakenet.data_io import load_catalog_plain
 from obspy.core.utcdatetime import UTCDateTime
 import fnmatch
 import json
@@ -78,14 +78,13 @@ def main(_):
 
     # Load Catalog
     print "+ Loading Catalog"
-    cat = load_catalog_text(FLAGS.catalog)
+    #cat = load_catalog_text(FLAGS.catalog)
+    cat = load_catalog_plain(FLAGS.catalog)
     starttime = stream[0].stats.starttime.timestamp
     endtime = stream[-1].stats.endtime.timestamp
     print "startime", UTCDateTime(starttime)
     print "endtime", UTCDateTime(endtime)
     cat = filter_catalog(cat, starttime, endtime)
-    print "First event in filtered catalog", cat.DateTime.values[0]
-    print "Last event in filtered catalog", cat.DateTime.values[-1]
     cat_event_times = cat.utc_timestamp.values
     cat_event_idx = 0
 
@@ -131,7 +130,7 @@ def main(_):
             event_time = cat_event_times[cat_event_idx]
             assert window_start < cat.utc_timestamp.values[cat_event_idx]
             assert window_end > cat.utc_timestamp.values[cat_event_idx]
-            print "avoiding event {}".format(cat.DateTime.values[cat_event_idx])
+            print "avoiding event {}".format(cat.utc_timestamp.values[cat_event_idx])
             continue
         elif cat_event_idx < len(cat_event_times) and \
             window_start > cat_event_times[cat_event_idx] and \
@@ -141,7 +140,7 @@ def main(_):
         elif cat_event_idx < len(cat_event_times) and \
             window_start > cat_event_times[cat_event_idx] + 600:
             print "avoided event {} until {}".format(
-                cat.DateTime.values[cat_event_idx],
+                cat.utc_timestamp.values[cat_event_idx],
                 window_start)
             cat_event_idx += 1
         # there is no event

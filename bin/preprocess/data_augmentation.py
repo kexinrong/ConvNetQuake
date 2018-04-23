@@ -28,6 +28,8 @@ flags.DEFINE_string('tfrecords', None,
 flags.DEFINE_string('output', None,
                     'path to the tfrecords file to create')
 flags.DEFINE_float("std_factor",1.0,"std of the introduced noise")
+flags.DEFINE_float(
+    'window_size', 10, 'size of the window samples (in seconds)')
 flags.DEFINE_boolean("plot",False,
                      "True to plot detected events in output")
 flags.DEFINE_boolean("compress_data",False,
@@ -36,6 +38,7 @@ flags.DEFINE_boolean("stretch_data",False,
                      "True to stretch the time series")
 flags.DEFINE_boolean("shift_data",False,
                      "True to shift the time series")
+
 FLAGS = flags.FLAGS
 
 def add_noise_to_signal(data):
@@ -52,8 +55,10 @@ def compress_signal(data):
     compressed_data = np.zeros_like(data)
     for i in range(data.shape[1]):
         y = librosa.effects.time_stretch(data[:,i],0.4)
-        compressed_data[:,i] = y[0:2001:2]
-    assert compressed_data.shape == (1001,3)
+        #compressed_data[:,i] = y[0:2001:2]
+        compressed_data[:,i] = y[0:3001:2]
+    #assert compressed_data.shape == (1001,3)
+    assert compressed_data.shape == (1501, 3)
     return compressed_data
 
 def stretch_signal(sample):
@@ -64,7 +69,8 @@ def shift_signal(data):
     shifted_data = np.zeros_like(data)
     for i in range(data.shape[1]):
         shifted_data[:,i] = librosa.effects.pitch_shift(data[:,i],100,3)
-    assert shifted_data.shape == (1001,3)
+    #assert shifted_data.shape == (1001,3)
+    assert shifted_data.shape == (1501,3)
     return shifted_data
 
 
@@ -73,9 +79,12 @@ def convert_np_to_stream(data):
     sampling_rate = 100
     n_channels = data.shape[1]
     stream_info = {}
-    stream_info['station'] = 'OK029'
-    stream_info['network'] = 'GS'
-    stream_info['channels'] = ['HH1','HH2','HHZ']
+    # stream_info['station'] = 'OK029'
+    # stream_info['network'] = 'GS'
+    # stream_info['channels'] = ['HH1','HH2','HHZ']
+    stream_info['station'] = 'LMD'
+    stream_info['network'] = 'PG'
+    stream_info['channels'] = ['EHZ','EHN','EHE']
     out_stream = data_conversion.array2stream(data, sampling_rate,
                                               stream_info)
     return out_stream
@@ -130,7 +139,7 @@ def main(_):
     cfg = config.Config()
     cfg.batch_size = 1
     cfg.n_epochs = 1
-
+    cfg.win_size = 1501
 
     data_pipeline = DataPipeline(FLAGS.tfrecords,
                                      config=cfg,

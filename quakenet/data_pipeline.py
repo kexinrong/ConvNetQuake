@@ -32,7 +32,7 @@ class DataWriter(object):
         # Extract data
         data = np.zeros((n_traces, n_samples), dtype=np.float32)
         for i in range(n_traces):
-            data[i, :] = sample_window[i].data[...]
+            data[i, :] = sample_window[i].data[:n_samples]
         # Extract metadata
         start_time = np.int64(sample_window[0].stats.starttime.timestamp)
         end_time = np.int64(sample_window[0].stats.endtime.timestamp)
