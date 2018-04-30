@@ -144,6 +144,8 @@ def main(args):
                 print "Run time: ", time.time() - time_start
 
             except tf.errors.OutOfRangeError:
+                print "processed {} windows".format(idx)
+                print "found {} events".format(n_events)
                 print 'Evaluation completed ({} epochs).'.format(cfg.n_epochs)
                 break
 

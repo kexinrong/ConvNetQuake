@@ -14,6 +14,7 @@ architecture
 
 import os
 import time
+import math
 
 import numpy as np
 import tensorflow as tf
@@ -78,14 +79,17 @@ class ConvNetQuake(tflib.model.BaseModel):
 
       self._validation_metrics = {
         'loss': self.loss,
-        'detection_accuracy': self.detection_accuracy,
-        'localization_accuracy': self.localization_accuracy
+        'val_accuracy/eq': self.detection_accuracy,
+        'val_accuracy/noise': self.noise_accuracy
+        #'localization_accuracy': self.localization_accuracy
       }
     return self._validation_metrics
 
   def validation_metrics_message(self, metrics):
-    s = 'loss = {:.5f} | det. acc. = {:.1f}% | loc. acc. = {:.1f}%'.format(metrics['loss'],
-     metrics['detection_accuracy']*100, metrics['localization_accuracy']*100)
+    s = 'loss = {:.5f} | eq. acc. = {:.1f}% | noise. acc. = {:.1f}%'.format(metrics['loss'],
+     metrics['val_accuracy/eq']*100, 
+     metrics['val_accuracy/noise']*100)
+     #metrics['localization_accuracy']*100)
     return s
 
   def _setup_loss(self):
@@ -108,14 +112,30 @@ class ConvNetQuake(tflib.model.BaseModel):
     self.summaries.append(tf.scalar_summary('loss/train', self.loss))
 
     with tf.name_scope('accuracy'):
-      is_true_event = tf.cast(tf.greater(targets, tf.zeros_like(targets)), tf.int64)
-      is_pred_event = tf.cast(tf.greater(self.layers['class_prediction'], tf.zeros_like(targets)), tf.int64)
+      is_true_event = tf.greater(targets, tf.zeros_like(targets))
+      is_pred_event = tf.greater(self.layers['class_prediction'], tf.zeros_like(targets))
+      eq_is_correct = tf.logical_and(is_true_event, is_pred_event)
+      if self.is_training:
+        self.detection_accuracy = tf.div(tf.reduce_sum(tf.to_float(eq_is_correct)),
+            self.batch_size / 2)
+      else:
+        self.detection_accuracy = tf.div(tf.reduce_sum(tf.to_float(eq_is_correct)),
+            self.batch_size)
+
       detection_is_correct = tf.equal(is_true_event, is_pred_event)
-      is_correct = tf.equal(self.layers['class_prediction'], targets)
-      self.detection_accuracy = tf.reduce_mean(tf.to_float(detection_is_correct))
-      self.localization_accuracy = tf.reduce_mean(tf.to_float(is_correct))
-      self.summaries.append(tf.scalar_summary('detection_accuracy/train', self.detection_accuracy))
-      self.summaries.append(tf.scalar_summary('localization_accuracy/train', self.localization_accuracy))
+      noise_is_correct = tf.sub(tf.reduce_sum(tf.to_float(detection_is_correct)),
+        tf.reduce_sum(tf.to_float(eq_is_correct)))
+      if self.is_training:
+        self.noise_accuracy = tf.div(tf.reduce_sum(tf.to_float(noise_is_correct)),
+            self.batch_size / 2)
+      else:
+        self.noise_accuracy = tf.div(tf.reduce_sum(tf.to_float(noise_is_correct)),
+            self.batch_size)
+
+      #self.localization_accuracy = tf.reduce_mean(tf.to_float(is_correct))
+      self.summaries.append(tf.scalar_summary('train_accuracy/eq', self.detection_accuracy))
+      self.summaries.append(tf.scalar_summary('train_accuracy/noise', self.noise_accuracy))
+      #self.summaries.append(tf.scalar_summary('localization_accuracy/train', self.localization_accuracy))
 
   def _setup_optimizer(self, learning_rate):
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -132,23 +152,25 @@ class ConvNetQuake(tflib.model.BaseModel):
         'optimizer': self.optimizer,
         'loss': self.loss,
         'detection_accuracy': self.detection_accuracy,
-        'localization_accuracy': self.localization_accuracy
+        'noise_accuracy': self.noise_accuracy
+        #'localization_accuracy': self.localization_accuracy
     }
 
   def _summary_step(self, step_data):
     step = step_data['step']
     loss = step_data['loss']
     det_accuracy = step_data['detection_accuracy']
-    loc_accuracy = step_data['localization_accuracy']
+    #loc_accuracy = step_data['localization_accuracy']
+    noise_accuracy = step_data['noise_accuracy']
     duration = step_data['duration']
     avg_duration = 1000*duration/step
 
     if self.is_training:
-      toprint ='Step {} | {:.0f}s ({:.0f}ms) | loss = {:.4f} | det. acc. = {:.1f}% | loc. acc. = {:.1f}%'.format(
-        step, duration, avg_duration, loss, 100*det_accuracy, 100*loc_accuracy)
+      toprint ='Step {} | {:.0f}s ({:.0f}ms) | loss = {:.4f} | det. acc. = {:.1f}% | noise. acc. = {:.1f}%'.format(
+        step, duration, avg_duration, loss, 100*det_accuracy, 100*noise_accuracy)
     else:
       toprint ='Step {} | {:.0f}s ({:.0f}ms) | accuracy = {:.1f}% | accuracy = {:.1f}%'.format(
-        step, duration, avg_duration, 100*det_accuracy, 100*loc_accuracy)
+        step, duration, avg_duration, 100*det_accuracy, 100*noise_accuracy)
 
     return toprint
 

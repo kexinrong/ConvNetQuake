@@ -61,7 +61,7 @@ def main(args):
   }
 
   # model
-  model = models.get(args.model, samples,cfg, args.checkpoint_dir, is_training=True)
+  model = models.get(args.model, samples, cfg, args.checkpoint_dir, is_training=True)
 
   # train loop
   model.train(

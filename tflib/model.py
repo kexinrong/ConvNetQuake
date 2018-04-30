@@ -158,8 +158,8 @@ class BaseModel(object):
         coord.request_stop()
         coord.join(threads)
 
-  def train(self, learning_rate, resume=False, summary_step=100,
-            checkpoint_step=500, profiling=False):
+  def train(self, learning_rate, resume=False, summary_step=50,
+            checkpoint_step=250, profiling=False):
     """Main training loop.
 
     Args:
@@ -169,6 +169,9 @@ class BaseModel(object):
       checkpoint_step (int): frequency at which checkpoints are saved to disk.
       profiling: whether to save profiling trace at each summary step. (used for perf. debugging).
     """
+    # starter_learning_rate = 1e-4
+    # lr = tf.train.exponential_decay(starter_learning_rate, self.global_step,
+    #             1000, 0.96, staircase=True)
     lr = tf.Variable(learning_rate, name='learning_rate',
         trainable=False,
         collections=[tf.GraphKeys.VARIABLES])

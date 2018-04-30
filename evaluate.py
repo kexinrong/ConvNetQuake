@@ -28,6 +28,10 @@ from quakenet.data_pipeline import DataPipeline
 import quakenet.config as config
 
 
+tf_config = tf.ConfigProto()
+tf_config.gpu_options.allow_growth = True
+
+
 def main(args):
     
     if args.n_clusters == None:
@@ -60,11 +64,12 @@ def main(args):
     if args.noise:
         cfg.batch_size = 256
     if args.events:
-        cfg.batch_size = 1
+        cfg.batch_size = 50
     if args.save_false:
         cfg.batch_size = 1
     cfg.n_epochs = 1
     cfg.add = 1
+    cfg.win_size = 1501
     cfg.n_clusters= args.n_clusters
     cfg.n_clusters +=1
 
@@ -88,7 +93,7 @@ def main(args):
             # Validation summary writer
             summary_writer = tf.train.SummaryWriter(summary_dir, None)
 
-            with tf.Session() as sess:
+            with tf.Session(config=tf_config) as sess:
                 coord = tf.train.Coordinator()
                 tf.initialize_local_variables().run()
                 threads = tf.train.start_queue_runners(sess=sess, coord=coord)
@@ -145,15 +150,24 @@ def main(args):
                         break
 
                 if n > 0:
-                  for key in metrics:
-                    mean_metrics[key] /= n
-                    summary = tf.Summary(value=[tf.Summary.Value(
-                      tag='{}/val'.format(key), simple_value=mean_metrics[key])])
-                    if args.save_summary:
-                        summary_writer.add_summary(summary, global_step=step)
+                    summary_metrics = {}
+                    if args.events:
+                        summary_metrics['loss'] = mean_metrics['loss']
+                        summary_metrics['val_accuracy/eq'] = mean_metrics['val_accuracy/eq']
+                    else:
+                        summary_metrics['loss'] = mean_metrics['loss']
+                        summary_metrics['val_accuracy/noise'] = mean_metrics['val_accuracy/noise']
+                    for key in summary_metrics:
+                        summary_metrics[key] /= n
+                        summary = tf.Summary(value=[tf.Summary.Value(
+                          tag='{}/val'.format(key), simple_value=summary_metrics[key])])
+                        if args.save_summary:
+                            summary_writer.add_summary(summary, global_step=step)
 
                 summary_writer.flush()
 
+                for key in mean_metrics:
+                        mean_metrics[key] /= n
                 mess = model.validation_metrics_message(mean_metrics)
                 print 'Average | '+mess
 

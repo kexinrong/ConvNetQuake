@@ -41,6 +41,9 @@ flags.DEFINE_boolean("shift_data",False,
 
 FLAGS = flags.FLAGS
 
+tf_config = tf.ConfigProto()
+tf_config.gpu_options.allow_growth = True
+
 def add_noise_to_signal(data):
     """Add white noise to the signal"""
     s_mean = np.mean(data,axis=0)
@@ -147,7 +150,7 @@ def main(_):
     samples = data_pipeline.samples
     labels = data_pipeline.labels
 
-    with tf.Session() as sess:
+    with tf.Session(config=tf_config) as sess:
         coord = tf.train.Coordinator()
         tf.initialize_local_variables().run()
         threads = tf.train.start_queue_runners(coord=coord)
