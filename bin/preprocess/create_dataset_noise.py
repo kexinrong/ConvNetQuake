@@ -61,6 +61,7 @@ def filter_catalog(cat, starttime, endtime):
 def main(_):
 
 # Create dir to store tfrecords
+    f = open('16-09-noise.txt', 'w')
     if not os.path.exists(FLAGS.output_dir):
         os.makedirs(FLAGS.output_dir)
 
@@ -147,7 +148,8 @@ def main(_):
         if (n_pts == n_samples):
         #if (len(win)==3):
             # Write tfrecords
-            writer.write(win,-1)
+            #writer.write(win,-1)
+            f.write('%s\n' %window_start)
             # Plot events
             if FLAGS.plot:
                 trace = win[0]
@@ -177,7 +179,7 @@ def main(_):
     writer.close()
 
     # Write metadata
-    metadata[stream_file.split(".mseed")[0]] = writer._written
+    metadata[stream_file.split("_new_counts.mseed")[0]] = writer._written
     write_json(metadata, output_metadata)
 
 

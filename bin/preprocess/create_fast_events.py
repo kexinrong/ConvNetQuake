@@ -142,11 +142,14 @@ def main(_):
         # Loop over all events in the considered stream
         for event_n in range(filtered_catalog.shape[0]):
             event_time = filtered_catalog.utc_timestamp.values[event_n]
-            for i in range(1):
+            for i in range(5):
                 # Add random shift to avoid event always being in the middle
                 random_shift = seg_len * i + random.randint(0, seg_len)
+                #random_shift = 0
                 new_event_time = event_time - random_shift
                 #event_time += travel_time[event_n]
+                # st_event = stream.slice(UTCDateTime(new_event_time) - FLAGS.window_size / 2.0,
+                #                         UTCDateTime(new_event_time) + FLAGS.window_size / 2.0).copy()
                 st_event = stream.slice(UTCDateTime(new_event_time),
                                         UTCDateTime(new_event_time) + FLAGS.window_size).copy()
                 cluster_id = filtered_catalog.cluster_id.values[event_n]
@@ -180,7 +183,6 @@ def main(_):
                         trace.plot(outfile=os.path.join(viz_dir,
                                                         "event_{}.png".format(event_n)))
                 else:
-                    embed()
                     print "Missing waveform for event:", UTCDateTime(event_time)
 
         # Cleanup writer
